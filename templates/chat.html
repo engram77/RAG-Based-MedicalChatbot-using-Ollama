@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Chatbot</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="chat-card">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <div class="bot-avatar">
+                        <img src="{{ url_for('static', filename='Screenshot 2026-04-19 115924.png') }}" alt="Bot">
+                    </div>
+                    <div class="chat-header-text">
+                        <h1>MEDICAL.AI</h1>
+                        <p>Neural health assistant // indexed medical knowledge active</p>
+                    </div>
+                </div>
+                <div class="chat-status">
+                    <span class="status-dot"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+
+            <div id="messageFormeight" class="chat-body">
+                <div class="message-row bot-row">
+                    <div class="message-avatar">
+                        <img src="{{ url_for('static', filename='Screenshot 2026-04-19 115924.png') }}" alt="Bot">
+                    </div>
+                    <div class="message-bubble bot-bubble">
+                        Greetings. I am your medical assistant. Ask about diseases, symptoms, treatments, precautions, or any topic covered in your indexed medical document.
+                        <div class="message-time">Now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-footer">
+                <form id="messageArea" class="chat-input-bar">
+                    <input
+                        type="text"
+                        id="text"
+                        name="msg"
+                        placeholder="Ask your medical query..."
+                        autocomplete="off"
+                        required
+                    />
+                    <button type="submit" id="send" aria-label="Send">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHtml(text) {
+            return $('<div>').text(text).html();
+        }
+
+        function formatBotText(text) {
+            const safe = escapeHtml(text);
+
+            return safe
+                .replace(/^(.*?:)\n*/gm, function(match, heading) {
+                const allowedHeadings = [
+                    "Definition:",
+                    "Main treatment approaches:",
+                    "Medicine categories or treatment types:",
+                    "Important practical guidance:"
+                ];
+
+                if (allowedHeadings.includes(heading) || /^[A-Za-z][A-Za-z\s-]*:$/.test(heading)) {
+                    return '<div class="section-title">' + heading + '</div>';
+                }
+
+                return match;
+            })
+        }
+
+        function getCurrentTime() {
+            const date = new Date();
+            let hour = date.getHours();
+            let minute = String(date.getMinutes()).padStart(2, "0");
+            return hour + ":" + minute;
+        }
+
+        function scrollToBottom() {
+            const chatBody = $("#messageFormeight");
+            chatBody.scrollTop(chatBody[0].scrollHeight);
+        }
+
+        $(document).ready(function () {
+            $("#messageArea").on("submit", function (event) {
+                event.preventDefault();
+
+                const rawText = $("#text").val().trim();
+                if (!rawText) return;
+
+                const str_time = getCurrentTime();
+
+                const userHtml =
+                    '<div class="message-row user-row">' +
+                        '<div class="message-bubble user-bubble">' +
+                            escapeHtml(rawText) +
+                            '<div class="message-time">' + str_time + '</div>' +
+                        '</div>' +
+                        '<div class="message-avatar">' +
+                            '<img src="https://i.ibb.co/d5b84Xw/Untitled-design.png" alt="User">' +
+                        '</div>' +
+                    '</div>';
+
+                $("#text").val("");
+                $("#messageFormeight").append(userHtml);
+                scrollToBottom();
+
+                const typingHtml =
+                    '<div id="typingBubble" class="message-row bot-row">' +
+                        '<div class="message-avatar">' +
+                            '<img src="{{ url_for('static', filename='Screenshot 2026-04-19 115924.png') }}" alt="Bot">' +
+                        '</div>' +
+                        '<div class="message-bubble bot-bubble typing-bubble">' +
+                            '<span></span><span></span><span></span>' +
+                        '</div>' +
+                    '</div>';
+
+                $("#messageFormeight").append(typingHtml);
+                scrollToBottom();
+
+                $.ajax({
+                    data: { msg: rawText },
+                    type: "POST",
+                    url: "/get",
+                }).done(function (data) {
+                    $("#typingBubble").remove();
+
+                    const botHtml =
+                        '<div class="message-row bot-row">' +
+                            '<div class="message-avatar">' +
+                                '<img src="{{ url_for('static', filename='Screenshot 2026-04-19 115924.png') }}" alt="Bot">' +
+                            '</div>' +
+                            '<div class="message-bubble bot-bubble">' +
+                                formatBotText(data) +
+                                '<div class="message-time">' + str_time + '</div>' +
+                            '</div>' +
+                        '</div>';
+
+                    $("#messageFormeight").append(botHtml);
+                    scrollToBottom();
+                }).fail(function () {
+                    $("#typingBubble").remove();
+
+                    const errorHtml =
+                        '<div class="message-row bot-row">' +
+                            '<div class="message-avatar">' +
+                                '<img src="{{ url_for('static', filename='Screenshot 2026-04-19 115924.png') }}" alt="Bot">' +
+                            '</div>' +
+                            '<div class="message-bubble bot-bubble">' +
+                                'System error. Please retry your query.' +
+                                '<div class="message-time">' + str_time + '</div>' +
+                            '</div>' +
+                        '</div>';
+
+                    $("#messageFormeight").append(errorHtml);
+                    scrollToBottom();
+                });
+            });
+        });
+    </script>
+</body>
+</html>
